@@ -1,6 +1,7 @@
 /** 轻量全局用户状态（响应式） */
 import { reactive } from 'vue';
 import { api, getToken, clearToken } from '@/api';
+import { disposeAllRealtime } from '@/realtime/session';
 
 export const userStore = reactive({
   token: getToken(),
@@ -30,6 +31,7 @@ export async function refreshNameViewFlag() {
 }
 
 export function logout() {
+  disposeAllRealtime(); // 立即结束对讲与位置共享
   api.logout().catch(() => {});
   clearToken();
   userStore.token = '';

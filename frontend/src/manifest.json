@@ -2,8 +2,8 @@
   "name": "午间岛",
   "appid": "",
   "description": "组织身份即时通信与实名互认服务",
-  "versionName": "1.0.0",
-  "versionCode": "100",
+  "versionName": "1.2.0",
+  "versionCode": "120",
   "vueVersion": "3",
 
   "app-plus": {
@@ -17,31 +17,28 @@
       "delay": 0
     },
     "modules": {
-      "Geolocation": {}
+      "Geolocation": {},
+      "Record": {}
     },
     "distribute": {
       "android": {
         "permissions": [
           "<uses-permission android:name=\"android.permission.ACCESS_FINE_LOCATION\"/>",
           "<uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\"/>",
-          "<uses-permission android:name=\"android.permission.INTERNET\"/>"
+          "<uses-permission android:name=\"android.permission.INTERNET\"/>",
+          "<uses-permission android:name=\"android.permission.RECORD_AUDIO\"/>",
+          "<uses-permission android:name=\"android.permission.MODIFY_AUDIO_SETTINGS\"/>"
         ],
         "abiFilters": ["armeabi-v7a", "arm64-v8a"]
       },
       "ios": {
         "privacyDescription": {
-          "NSLocationWhenInUseUsageDescription": "用于核验你是否在公司注册地址附近，以完成组织认证。仅在使用期间获取，不保存位置历史。"
+          "NSLocationWhenInUseUsageDescription": "用于组织认证时核验你是否在公司附近，以及在你主动开启“共享实时位置”时把位置只发给当前聊天对象。仅在使用 App 期间获取，不保存位置历史。",
+          "NSMicrophoneUsageDescription": "用于“按住说话”实时对讲：仅在你按住按钮时采集声音并实时发给当前聊天对象，不录音存档。"
         },
         "dSYMs": false
       },
-      "sdkConfigs": {
-        "maps": {
-          "amap": {
-            "appkey_ios": "",
-            "appkey_android": ""
-          }
-        }
-      }
+      "sdkConfigs": {}
     }
   },
 
@@ -63,11 +60,13 @@
     },
     "usingComponents": true,
     "requiredPrivateInfos": [
-      "getLocation"
+      "getLocation",
+      "startLocationUpdate",
+      "onLocationChange"
     ],
     "permission": {
       "scope.userLocation": {
-        "desc": "用于核验你是否在公司注册地址附近，以完成组织认证。仅一次性核验，不保存位置历史。"
+        "desc": "用于组织认证核验，以及你主动开启“共享实时位置”时把位置只发给当前聊天对象（不保存位置历史）"
       }
     }
   },

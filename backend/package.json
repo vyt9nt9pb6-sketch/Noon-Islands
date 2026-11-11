@@ -1,17 +1,21 @@
 {
   "name": "wujian-dao-backend",
-  "version": "1.0.0",
+  "version": "1.4.0",
   "description": "午间岛 - 组织身份即时通信与实名互认服务 后端 API",
   "main": "src/index.js",
   "type": "commonjs",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "test": "node scripts/run-tests.js",
+    "smoke": "node smoke-test.js"
   },
   "engines": {
     "node": ">=18"
   },
   "dependencies": {
-    "express": "^4.21.2"
+    "@alicloud/dm20151123": "^1.11.0",
+    "express": "^4.21.2",
+    "ws": "^8.22.2"
   }
 }

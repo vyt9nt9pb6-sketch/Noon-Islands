@@ -22,8 +22,10 @@ function getOrgCertStatus(userId) {
   const db = load();
   const user = getUser(userId);
   if (!user) return { certified: false, reason: 'no_user' };
+  const companyId = user.org && user.org.companyId;
+  if (!companyId) return { certified: false, reason: 'no_org' };
   const cert = db.orgCerts
-    .filter(c => c.userId === userId && c.companyId === user.org.companyId)
+    .filter(c => c.userId === userId && c.companyId === companyId)
     .sort((a, b) => new Date(b.verifiedAt) - new Date(a.verifiedAt))[0];
   if (!cert) return { certified: false, reason: 'not_certified' };
   if (cert.expiredByDeparture) return { certified: false, reason: 'departed', validUntil: cert.validUntil };
@@ -34,7 +36,8 @@ function getOrgCertStatus(userId) {
 /** 两用户关系判定 */
 function relationBetween(userA, userB) {
   if (!userA || !userB) return 'unknown';
-  const ca = userA.org.companyId, cb = userB.org.companyId;
+  const ca = userA.org && userA.org.companyId, cb = userB.org && userB.org.companyId;
+  if (!ca || !cb) return 'cross_group';
   if (ca === cb) return 'same_company';
   const ga = getCompany(ca)?.groupId, gb = getCompany(cb)?.groupId;
   if (ga && ga === gb) return 'same_group_cross_company';

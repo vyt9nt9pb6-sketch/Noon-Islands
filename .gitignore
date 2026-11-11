@@ -1,26 +1,25 @@
-# Dependencies
+# 依赖
 node_modules/
-
-# Build
+# 构建产物
 frontend/dist/
 frontend/.hbuilderx/
-
-# Runtime data
+# 运行数据（含用户/消息，不入库）
 backend/data/
-
-# Secrets
+# 环境与本地配置
 .env
 .env.*
 !.env.example
 *.local
 *.secret
-
-# Logs
-*.log
-server.pid
-
-# OS / Editor
+# 编辑器与系统
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+*.log
+server.pid
+# 底图 PMTiles（体积大，用 backend/scripts/fetch-tiles.sh 生成，不入库；字形 fonts/ 入库）
+backend/tiles/*.pmtiles
+# 地图引擎由 scripts/vendor-map.mjs 从 node_modules 生成，不入库
+frontend/src/static/h5/map/
+frontend/src/static/app/map/

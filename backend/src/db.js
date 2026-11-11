@@ -14,13 +14,15 @@ const EMPTY = () => ({
   groups: [],        // 集团 { id, name }
   companies: [],     // 公司 { id, groupId, name, registeredAddress: {lat,lng,label}, radiusMeters, domains: [] }
   departments: [],   // 部门 { id, companyId, name }
-  users: [],         // 员工账号 { id, phone, realName, realnameCertified, org: {companyId, departmentId}, displayName, avatarColor, deletedAt }
+  users: [],         // { id, phone, email, realName, realnameCertified, org: {companyId, departmentId}, displayName, avatarColor, deletedAt, registeredVia }
   tokens: [],        // { token, userId, createdAt }
   smsCodes: [],      // { phone, code, expiresAt }
+  emailCodes: [],    // { email, code, expiresAt }
   chats: [],         // { id, memberIds: [a,b], relation, createdAt, restrictedAtStart }
   chatRequests: [],  // { id, fromUserId, toUserId, status: pending|accepted|rejected, relation, createdAt }
   messages: [],      // { id, chatId, fromUserId, type: text|file|voice|video|system, content, createdAt }
-  orgCerts: [],      // { id, userId, companyId, method: location|fallback, withinRadius(bool,仅定位方式), verifiedAt, validUntil, expiredByDeparture }
+  orgCerts: [],      // { id, userId, companyId, method: location|documents|fallback, withinRadius(bool,仅定位方式), verifiedAt, validUntil, expiredByDeparture }
+  orgDocs: [],        // { id, userId, kind: contract|badge|other, name, mime, size, storedAs, uploadedAt } —— 只存元数据，文件在 DATA_DIR/org-docs
   orgCertAttempts: [], // { userId, failedAt } —— 24h 内失败计数
   fallbackRequests: [], // { id, userId, companyEmail, verifyCode, emailVerified, adminConfirmed, createdAt, status }
   realnameCerts: [],   // { id, userId, provider, providerFlowNo, status, submittedAt }
@@ -29,7 +31,8 @@ const EMPTY = () => ({
   nameViewLogs: [],     // 审计日志 { id, requesterId, targetId, action, chatId, createdAt }
   blocks: [],           // { id, userId, blockedUserId, createdAt }
   reports: [],          // { id, chatId, reporterId, reason, createdAt }
-  auditLogs: []         // 全局审计
+  auditLogs: [],        // 全局审计
+  privacyConsents: []   // { id, userId, kind: location_share, version, acceptedAt, withdrawnAt } —— 仅记录同意，不含位置
 });
 
 let db = null;
@@ -52,7 +55,10 @@ function load() {
 }
 
 function save() {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
+  // 原子写入：先写临时文件再 rename，避免进程崩溃或并发读取时读到半个文件
+  const tmp = DATA_FILE + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
+  fs.renameSync(tmp, DATA_FILE);
 }
 
 function id(prefix) {
@@ -78,11 +84,11 @@ function seed() {
   );
 
   db.users.push(
-    { id: 'u_alice', phone: '13800000001', realName: '张伟', realnameCertified: false, displayName: 'Alice', avatarColor: '#4C7DFF', org: { companyId: cA.id, departmentId: 'dept_tech_rd' } },
-    { id: 'u_bob', phone: '13800000002', realName: '李娜', realnameCertified: true, displayName: 'Bob', avatarColor: '#27BA6E', org: { companyId: cA.id, departmentId: 'dept_tech_hr' } },
-    { id: 'u_carol', phone: '13800000003', realName: '王芳', realnameCertified: false, displayName: 'Carol', avatarColor: '#FF9F43', org: { companyId: cB.id, departmentId: 'dept_media_ed' } },
-    { id: 'u_dave', phone: '13800000004', realName: '赵磊', realnameCertified: false, displayName: 'Dave', avatarColor: '#8A6DFF', org: { companyId: cC.id, departmentId: 'dept_logi_op' } },
-    { id: 'u_admin', phone: '13900000000', realName: '系统管理员', realnameCertified: true, displayName: 'Admin', avatarColor: '#666666', isAdmin: true, org: { companyId: cA.id, departmentId: 'dept_tech_hr' } }
+    { id: 'u_alice', phone: '13800000001', email: 'alice@dawn-tech.example.cn', realName: '张伟', realnameCertified: false, displayName: 'Alice', avatarColor: '#4C7DFF', org: { companyId: cA.id, departmentId: 'dept_tech_rd' } },
+    { id: 'u_bob', phone: '13800000002', email: 'bob@dawn-tech.example.cn', realName: '李娜', realnameCertified: true, displayName: 'Bob', avatarColor: '#27BA6E', org: { companyId: cA.id, departmentId: 'dept_tech_hr' } },
+    { id: 'u_carol', phone: '13800000003', email: 'carol@dawn-media.example.cn', realName: '王芳', realnameCertified: false, displayName: 'Carol', avatarColor: '#FF9F43', org: { companyId: cB.id, departmentId: 'dept_media_ed' } },
+    { id: 'u_dave', phone: '13800000004', email: 'dave@ocean-logi.example.cn', realName: '赵磊', realnameCertified: false, displayName: 'Dave', avatarColor: '#8A6DFF', org: { companyId: cC.id, departmentId: 'dept_logi_op' } },
+    { id: 'u_admin', phone: '13900000000', email: 'admin@dawn-tech.example.cn', realName: '系统管理员', realnameCertified: true, displayName: 'Admin', avatarColor: '#666666', isAdmin: true, org: { companyId: cA.id, departmentId: 'dept_tech_hr' } }
   );
 
   // 预置：Bob 已通过组织认证（6 个月有效）
@@ -96,4 +102,4 @@ function seed() {
   db.auditLogs.push({ id: id('log'), action: 'seed', createdAt: new Date().toISOString() });
 }
 
-module.exports = { load, save, id, DATA_FILE };
+module.exports = { load, save, id, DATA_FILE, DATA_DIR };

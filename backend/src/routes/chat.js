@@ -212,6 +212,8 @@ router.post('/:chatId/block', (req, res) => {
   }
   sysMessage(chat.id, `${req.user.displayName} 已屏蔽该会话`);
   save();
+  // 屏蔽后立即结束该会话内的位置共享与对讲
+  require('../realtime').revokeChat(chat.id);
   res.json({ code: 0, message: '已屏蔽' });
 });
 

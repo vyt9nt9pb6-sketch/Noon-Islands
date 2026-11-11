@@ -1,10 +1,12 @@
 /**
  * 认证路由（PRD 2.4 / 3 / 4 / 5）
- * - 组织认证：一次性距离核验（方案A）/ 企业邮箱+管理员确认替代路径；6 个月有效；24h 内失败 3 次限制；不保存经纬度
+ * - 组织认证：一次性距离核验（方式一）/ 上传劳动合同与工牌等材料（方式二，只认证不核验真伪，上传后立即生效 6 个月）；24h 内定位失败 3 次限制；不保存经纬度
  * - 实名认证：付费（本人/代付），代付人直接向平台支付，提交前可取消（全额退），提交后不可单方撤销
  */
 const express = require('express');
-const { load, save, id } = require('../db');
+const { load, save, id, DATA_DIR } = require('../db');
+const fs = require('fs');
+const path = require('path');
 const { authRequired } = require('../middleware/auth');
 const { getCompany, getOrgCertStatus } = require('../services/permissions');
 const { FLAGS } = require('../services/flags');
@@ -42,7 +44,7 @@ router.get('/org/status', (req, res) => {
       ...status,
       daysLeft,
       attemptsLeft: Math.max(0, ORG_CERT_ATTEMPT_LIMIT - recentFails.length),
-      company: getCompany(req.user.org.companyId)?.name
+      company: getCompany(req.user.org && req.user.org.companyId)?.name || ''
     }
   });
 });
@@ -57,10 +59,10 @@ router.post('/org/verify-location', (req, res) => {
   const cutoff = Date.now() - 24 * 3600 * 1000;
   const recentFails = db.orgCertAttempts.filter(a => a.userId === req.user.id && new Date(a.failedAt) > cutoff);
   if (recentFails.length >= ORG_CERT_ATTEMPT_LIMIT) {
-    return res.status(429).json({ code: 429, message: '核验失败次数已达今日上限（24 小时内 3 次），请改用企业邮箱验证路径或明日再试' });
+    return res.status(429).json({ code: 429, message: '核验失败次数已达今日上限（24 小时内 3 次），请改用上传劳动合同、工牌等材料，或明日再试' });
   }
 
-  const company = getCompany(req.user.org.companyId);
+  const company = getCompany(req.user.org && req.user.org.companyId);
   if (!company) return res.status(404).json({ code: 404, message: '未找到所属公司' });
 
   const distance = haversineMeters(lat, lng, company.registeredAddress.lat, company.registeredAddress.lng);
@@ -87,39 +89,86 @@ router.post('/org/verify-location', (req, res) => {
   res.json({ code: 0, data: { passed: true, validUntil: db.orgCerts.slice(-1)[0].validUntil } });
 });
 
-// 替代路径第一步：企业邮箱验证（拒绝定位时的替代认证，PRD 1.1 / 2.4）
-router.post('/org/fallback/request', (req, res) => {
-  const { companyEmail } = req.body || {};
-  const company = getCompany(req.user.org.companyId);
-  if (!company) return res.status(404).json({ code: 404, message: '未找到所属公司' });
-  if (!company.domains.some(d => String(companyEmail || '').endsWith('@' + d))) {
-    return res.status(400).json({ code: 400, message: `邮箱域名需属于 ${company.name}（${company.domains.join(' / ')}）` });
+// 方式二：上传劳动合同、工牌等材料。只做认证、不做内容核验，也不经企业管理员审核；材料齐全后立即发放 6 个月组织认证。
+const DOC_KINDS = ['contract', 'badge', 'other'];
+const DOC_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
+const MAX_DOC_BYTES = 3 * 1024 * 1024;
+const MAX_DOCS = 6;
+
+function extOf(name, mime) {
+  const n = String(name || '').toLowerCase();
+  if (n.endsWith('.pdf') || mime === 'application/pdf') return '.pdf';
+  if (n.endsWith('.png') || mime === 'image/png') return '.png';
+  if (n.endsWith('.webp') || mime === 'image/webp') return '.webp';
+  if (n.endsWith('.heic') || mime === 'image/heic') return '.heic';
+  return '.jpg';
+}
+
+router.post('/org/documents', (req, res) => {
+  const company = getCompany(req.user.org && req.user.org.companyId);
+  if (!company) return res.status(400).json({ code: 400, message: '尚未加入组织，请联系企业开通账号后再认证' });
+  if (getOrgCertStatus(req.user.id).certified) return res.status(400).json({ code: 400, message: '已完成组织认证' });
+  const files = Array.isArray((req.body || {}).files) ? req.body.files : [];
+  if (files.length < 2 || files.length > MAX_DOCS) {
+    return res.status(400).json({ code: 400, message: '请至少上传劳动合同和工牌各一份，最多 6 份' });
   }
+  const prepared = [];
+  for (const f of files) {
+    const kind = DOC_KINDS.includes(f.kind) ? f.kind : null;
+    const mime = String(f.mime || 'application/octet-stream').toLowerCase();
+    if (!kind) return res.status(400).json({ code: 400, message: '材料类型无效（合同 / 工牌 / 其他）' });
+    if (!DOC_MIME.includes(mime)) return res.status(400).json({ code: 400, message: '仅支持图片或 PDF' });
+    const raw = String(f.data || '').replace(/^data:[^;]+;base64,/, '');
+    let buf;
+    try { buf = Buffer.from(raw, 'base64'); } catch (e) { buf = null; }
+    if (!buf || !buf.length) return res.status(400).json({ code: 400, message: '文件内容无效' });
+    if (buf.length > MAX_DOC_BYTES) return res.status(400).json({ code: 400, message: '单个文件不能超过 3 MB' });
+    prepared.push({ kind, name: String(f.name || kind).slice(0, 80), mime, buf });
+  }
+  if (!prepared.some(f => f.kind === 'contract') || !prepared.some(f => f.kind === 'badge')) {
+    return res.status(400).json({ code: 400, message: '请同时上传劳动合同和工牌（不做真伪核验，仅确认已提交这两类材料）' });
+  }
+
   const db = load();
-  const code = String(Math.floor(100000 + Math.random() * 900000));
-  const fr = {
-    id: id('fr'), userId: req.user.id, companyEmail, verifyCode: code,
-    emailVerified: false, adminConfirmed: false, status: 'pending',
-    createdAt: new Date().toISOString()
+  const dir = path.join(DATA_DIR, 'org-docs', req.user.id);
+  fs.mkdirSync(dir, { recursive: true });
+  const recs = [];
+  for (const f of prepared) {
+    const recId = id('od');
+    const storedAs = recId + extOf(f.name, f.mime);
+    fs.writeFileSync(path.join(dir, storedAs), f.buf);
+    recs.push({
+      id: recId, userId: req.user.id, companyId: company.id,
+      kind: f.kind, name: f.name, mime: f.mime, size: f.buf.length,
+      storedAs, uploadedAt: new Date().toISOString()
+    });
+  }
+  db.orgDocs = db.orgDocs || [];
+  db.orgDocs.push(...recs);
+  const cert = {
+    id: id('oc'), userId: req.user.id, companyId: company.id, method: 'documents',
+    withinRadius: null, verifiedAt: new Date().toISOString(),
+    validUntil: new Date(Date.now() + ORG_CERT_VALID_DAYS * 24 * 3600 * 1000).toISOString(),
+    expiredByDeparture: false
   };
-  db.fallbackRequests.push(fr);
+  db.orgCerts.push(cert);
+  db.auditLogs.push({ id: id('log'), action: 'org_cert_documents', userId: req.user.id, createdAt: new Date().toISOString() });
   save();
   res.json({
-    code: 0, message: '验证邮件已发送至企业邮箱',
-    devCode: process.env.NODE_ENV !== 'production' ? code : undefined
+    code: 0,
+    data: {
+      passed: true, validUntil: cert.validUntil,
+      files: recs.map(r => ({ kind: r.kind, name: r.name, size: r.size, uploadedAt: r.uploadedAt }))
+    }
   });
 });
 
+// 原「企业邮箱 + 管理员确认」路径已由材料上传替代
+router.post('/org/fallback/request', (req, res) => {
+  res.status(410).json({ code: 410, message: '该路径已停用，请改用上传劳动合同和工牌完成组织认证' });
+});
 router.post('/org/fallback/verify', (req, res) => {
-  const { code } = req.body || {};
-  const db = load();
-  const fr = [...db.fallbackRequests].reverse().find(f => f.userId === req.user.id && f.status === 'pending');
-  if (!fr) return res.status(404).json({ code: 404, message: '没有待验证的邮箱申请' });
-  if (fr.verifyCode !== String(code)) return res.status(400).json({ code: 400, message: '验证码错误' });
-  fr.emailVerified = true;
-  fr.status = 'email_verified';
-  save();
-  res.json({ code: 0, message: '邮箱验证通过，等待企业管理员确认' });
+  res.status(410).json({ code: 410, message: '该路径已停用，请改用上传劳动合同和工牌完成组织认证' });
 });
 
 /* ==================== 实名认证（付费） ==================== */

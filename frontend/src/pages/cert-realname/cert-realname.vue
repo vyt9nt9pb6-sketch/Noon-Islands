@@ -170,15 +170,15 @@ export default {
 </script>
 
 <style>
-.title { font-size: 32rpx; font-weight: 700; margin-bottom: 12rpx; }
+.title { font-size: 32rpx; font-weight: 600; margin-bottom: 12rpx; }
 .row { display: flex; justify-content: space-between; margin: 10rpx 0; }
-.ok { color: #27ba6e; }
-.bad { color: #e64a3a; }
-.em { color: #b25e00; }
+.ok { color: #09BB07; }
+.bad { color: #E64340; }
+.em { color: #B26A00; }
 .sub { margin-top: 16rpx; }
-.ghost { background: #e8f3ff; color: #4c7dff; }
+.ghost { background: #F8F8F8; color: #576B95; }
 .consent {
-  background: #fff7e8; border-radius: 12rpx; padding: 20rpx;
-  font-size: 24rpx; color: #b25e00; margin: 16rpx 0; line-height: 1.6;
+  background: #FFF8E1; border-radius: 12rpx; padding: 20rpx;
+  font-size: 24rpx; color: #B26A00; margin: 16rpx 0; line-height: 1.6;
 }
 </style>

@@ -9,7 +9,12 @@ const FLAGS = {
   paidNameView: { enabled: true, disabledPlatforms: ['ios'] }, // iOS 关闭（IAP 定性未明确前的取舍）
   realnameFee: { amount: 990, currency: 'CNY' },              // 实名认证服务费（分）
   nameViewFee: { amount: 500, currency: 'CNY' },              // 付费查看姓名（分）
-  orgCertServiceFee: { enabled: false, amount: 0 }            // V1 组织认证不收费
+  orgCertServiceFee: { enabled: false, amount: 0 },           // V1 组织认证不收费
+  // 实时功能（docs/对讲与位置共享设计.md）
+  walkieTalkie: { enabled: true, disabledPlatforms: [] },      // 按住说话对讲机（仅单聊）
+  locationShare: { enabled: true, disabledPlatforms: [] },     // 实时位置共享（仅单聊）
+  // 跨集团受限模式（仅文字）下允许的实时功能。V1 为空 = 对讲与位置共享均不可用
+  restrictedModeRealtime: []
 };
 
 function normalizePlatform(p) {
@@ -21,6 +26,7 @@ function normalizePlatform(p) {
 function isFeatureEnabled(name, platform) {
   const flag = FLAGS[name];
   if (!flag) return false;
+  if (flag.enabled === false) return false;
   const p = normalizePlatform(platform);
   if (flag.disabledPlatforms && p && flag.disabledPlatforms.includes(p)) return false;
   return true;

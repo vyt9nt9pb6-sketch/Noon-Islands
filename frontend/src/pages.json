@@ -2,56 +2,110 @@
   "pages": [
     {
       "path": "pages/login/login",
-      "style": { "navigationBarTitleText": "登录" }
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
     },
     {
       "path": "pages/index/index",
-      "style": { "navigationBarTitleText": "午间岛 · 消息" }
+      "style": {
+        "navigationBarTitleText": "午间岛"
+      }
     },
     {
       "path": "pages/contacts/contacts",
-      "style": { "navigationBarTitleText": "通讯录" }
+      "style": {
+        "navigationBarTitleText": "通讯录"
+      }
     },
     {
       "path": "pages/profile/profile",
-      "style": { "navigationBarTitleText": "我的" }
+      "style": {
+        "navigationBarTitleText": "我的"
+      }
     },
     {
       "path": "pages/chat/chat",
-      "style": { "navigationBarTitleText": "会话" }
+      "style": {
+        "navigationBarTitleText": "会话"
+      }
+    },
+    {
+      "path": "pages/user-profile/user-profile",
+      "style": {
+        "navigationBarTitleText": "资料"
+      }
+    },
+    {
+      "path": "pages/live-location/live-location",
+      "style": {
+        "navigationBarTitleText": "实时位置",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
     },
     {
       "path": "pages/cert-org/cert-org",
-      "style": { "navigationBarTitleText": "组织认证" }
+      "style": {
+        "navigationBarTitleText": "组织认证"
+      }
     },
     {
       "path": "pages/cert-realname/cert-realname",
-      "style": { "navigationBarTitleText": "实名认证" }
+      "style": {
+        "navigationBarTitleText": "实名认证"
+      }
     },
     {
       "path": "pages/nameview/nameview",
-      "style": { "navigationBarTitleText": "实名姓名查看请求" }
+      "style": {
+        "navigationBarTitleText": "实名姓名查看请求"
+      }
+    },
+    {
+      "path": "pages/privacy-settings/privacy-settings",
+      "style": {
+        "navigationBarTitleText": "隐私"
+      }
     },
     {
       "path": "pages/account-delete/account-delete",
-      "style": { "navigationBarTitleText": "账号与安全" }
+      "style": {
+        "navigationBarTitleText": "账号与安全"
+      }
     }
   ],
   "tabBar": {
-    "color": "#8f959e",
-    "selectedColor": "#4c7dff",
-    "backgroundColor": "#ffffff",
+    "color": "#929292",
+    "selectedColor": "#09BB07",
+    "backgroundColor": "#F7F7F7",
     "borderStyle": "black",
     "list": [
-      { "pagePath": "pages/index/index", "text": "消息" },
-      { "pagePath": "pages/contacts/contacts", "text": "通讯录" },
-      { "pagePath": "pages/profile/profile", "text": "我的" }
+      {
+        "pagePath": "pages/index/index",
+        "text": "消息",
+        "iconPath": "static/tab/chat.png",
+        "selectedIconPath": "static/tab/chat-on.png"
+      },
+      {
+        "pagePath": "pages/contacts/contacts",
+        "text": "通讯录",
+        "iconPath": "static/tab/contacts.png",
+        "selectedIconPath": "static/tab/contacts-on.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我",
+        "iconPath": "static/tab/me.png",
+        "selectedIconPath": "static/tab/me-on.png"
+      }
     ]
   },
   "globalStyle": {
-    "navigationBarTextStyle": "black",
+    "navigationBarTextStyle": "white",
     "navigationBarTitleText": "午间岛",
-    "navigationBarBackgroundColor": "#ffffff",
-    "backgroundColor": "#f5f6fa"
+    "navigationBarBackgroundColor": "#393A3F",
+    "backgroundColor": "#EDEDED",
+    "backgroundColorTop": "#EDEDED"
   }
 }

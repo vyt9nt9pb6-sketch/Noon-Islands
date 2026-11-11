@@ -5,12 +5,33 @@
  */
 import { currentPlatform } from '@/utils/platform';
 
+// 后端地址：优先读构建环境变量 VITE_API_BASE（见 docs/部署指南.md），未设置时用下面的默认值。
+// H5 同源部署（后端托管 H5 构建产物）时设 VITE_API_BASE= 空字符串即可。
+const ENV_BASE = import.meta.env.VITE_API_BASE;
 // #ifdef H5
-export const BASE_URL = 'http://localhost:3000';
+export const BASE_URL = ENV_BASE !== undefined ? ENV_BASE : 'http://localhost:3000';
 // #endif
 // #ifndef H5
-export const BASE_URL = 'http://192.168.1.100:3000'; // 改为你的后端局域网地址
+export const BASE_URL = ENV_BASE !== undefined && ENV_BASE !== '' ? ENV_BASE : 'http://192.168.1.100:3000'; // 改为你的后端局域网地址
 // #endif
+
+/** 实时通道 WebSocket 地址（http→ws, https→wss；H5 同源时取当前页面地址） */
+export function wsUrl() {
+  let base = BASE_URL;
+  // #ifdef H5
+  if (!base) base = window.location.origin;
+  // #endif
+  return base.replace(/^http/, 'ws') + '/ws';
+}
+
+/** 绝对地址（地图瓦片 / 字形 URL 在 renderjs 里需要完整地址） */
+export function absoluteUrl(path) {
+  let base = BASE_URL;
+  // #ifdef H5
+  if (!base) base = window.location.origin;
+  // #endif
+  return base + path;
+}
 
 const TOKEN_KEY = 'wjd_token';
 
@@ -24,7 +45,7 @@ export function clearToken() {
   uni.removeStorageSync(TOKEN_KEY);
 }
 
-export function request({ url, method = 'GET', data = {} }) {
+export function request({ url, method = 'GET', data = {}, silent = false }) {
   return new Promise((resolve, reject) => {
     uni.request({
       url: BASE_URL + url,
@@ -45,11 +66,11 @@ export function request({ url, method = 'GET', data = {} }) {
         if (res.statusCode >= 200 && res.statusCode < 300 && body && body.code === 0) {
           return resolve(body);
         }
-        uni.showToast({ title: (body && body.message) || '请求失败', icon: 'none' });
+        if (!silent) uni.showToast({ title: (body && body.message) || '请求失败', icon: 'none' });
         reject(body);
       },
       fail: (err) => {
-        uni.showToast({ title: '网络不可用', icon: 'none' });
+        if (!silent) uni.showToast({ title: '网络不可用', icon: 'none' });
         reject(err);
       }
     });
@@ -60,12 +81,19 @@ export const api = {
   // 认证
   smsCode: (phone) => request({ url: '/api/auth/sms-code', method: 'POST', data: { phone } }),
   login: (phone, code) => request({ url: '/api/auth/login', method: 'POST', data: { phone, code } }),
+  emailCode: (email) => request({ url: '/api/auth/email-code', method: 'POST', data: { email } }),
+  emailLogin: (email, code) => request({ url: '/api/auth/email-login', method: 'POST', data: { email, code } }),
+  loginMethods: () => request({ url: '/api/auth/methods' }),
+  oauthLogin: (provider, data) => request({ url: `/api/auth/oauth/${provider}`, method: 'POST', data: data || {} }),
   logout: () => request({ url: '/api/auth/logout', method: 'POST' }),
   me: () => request({ url: '/api/auth/me' }),
 
   // 组织
   orgStructure: () => request({ url: '/api/org/structure' }),
   searchUsers: (keyword) => request({ url: `/api/org/users/search?keyword=${encodeURIComponent(keyword || '')}` }),
+  userProfile: (userId) => request({ url: `/api/org/users/${userId}` }),
+  blockUser: (userId) => request({ url: `/api/org/users/${userId}/block`, method: 'POST' }),
+  reportUser: (userId, reason) => request({ url: `/api/org/users/${userId}/report`, method: 'POST', data: { reason } }),
   myCompany: () => request({ url: '/api/org/my-company' }),
 
   // 聊天
@@ -82,8 +110,7 @@ export const api = {
   // 组织认证
   orgCertStatus: () => request({ url: '/api/cert/org/status' }),
   orgVerifyLocation: (lat, lng) => request({ url: '/api/cert/org/verify-location', method: 'POST', data: { lat, lng } }),
-  orgFallbackRequest: (companyEmail) => request({ url: '/api/cert/org/fallback/request', method: 'POST', data: { companyEmail } }),
-  orgFallbackVerify: (code) => request({ url: '/api/cert/org/fallback/verify', method: 'POST', data: { code } }),
+  orgSubmitDocuments: (files) => request({ url: '/api/cert/org/documents', method: 'POST', data: { files } }),
 
   // 实名认证与订单
   realnameStatus: () => request({ url: '/api/cert/realname/status' }),
@@ -102,6 +129,11 @@ export const api = {
   nameViewIncoming: () => request({ url: '/api/name-view/incoming' }),
   nameViewRespond: (rid, accept) => request({ url: `/api/name-view/incoming/${rid}/respond`, method: 'POST', data: { accept } }),
   nameViewRevealed: (chatId) => request({ url: `/api/name-view/revealed/${chatId}` }),
+
+  // 地图 / 位置共享（V1.2：OSM 底图配置，不含任何 key）
+  mapConfig: () => request({ url: '/api/map/config' }),
+  locationPrivacy: () => request({ url: '/api/account/privacy/location', silent: true }),
+  withdrawLocationPrivacy: () => request({ url: '/api/account/privacy/location/withdraw', method: 'POST' }),
 
   // 账号
   accountDelete: () => request({ url: '/api/account/delete', method: 'POST' }),

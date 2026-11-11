@@ -6,9 +6,11 @@
     <title>午间岛</title>
     <script>
       document.addEventListener('DOMContentLoaded', function () {
-        document.body.style.cssText += ';background:#F5F6FA;';
+        document.body.style.cssText += ';background:#EDEDED;';
       });
     </script>
+    <!-- uni-app H5 会在 body::after 预加载 cdn.dcloud.net.cn 的导航栏阴影图（dcloudio/uni-app#1803），本项目不用该阴影，关闭以免请求外部域名 -->
+    <style>body::after { content: none !important; animation: none !important; }</style>
   </head>
   <body>
     <div id="app"></div>
