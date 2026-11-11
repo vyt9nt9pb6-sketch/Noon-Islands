@@ -1,17 +1,26 @@
-# 依赖
+# Dependencies
 node_modules/
-# 构建产物
+
+# Build
 frontend/dist/
 frontend/.hbuilderx/
-# 运行数据（含用户/消息，不入库）
+
+# Runtime data
 backend/data/
-# 环境与本地配置
+
+# Secrets
 .env
+.env.*
+!.env.example
 *.local
-# 编辑器与系统
+*.secret
+
+# Logs
+*.log
+server.pid
+
+# OS / Editor
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
-*.log
-server.pid
